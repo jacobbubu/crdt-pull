@@ -8,7 +8,7 @@ describe('set', () => {
   function subscribe(set: Set, eventName: string, fn: Function) {
     set.on(eventName, fn as any)
     return function unsubscribe() {
-      set.off(eventName, fn as any)
+      set.removeListener(eventName, fn as any)
     }
   }
 

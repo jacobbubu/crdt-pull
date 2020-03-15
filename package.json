@@ -1,6 +1,6 @@
 {
   "name": "@jacobbubu/crdt-pull",
-  "version": "0.0.0",
+  "version": "0.0.0-development",
   "description": "",
   "keywords": [],
   "main": "dist/index.js",
@@ -11,7 +11,7 @@
   "author": "jacobbubu <rong.shen@gmail.com>",
   "repository": {
     "type": "git",
-    "url": ""
+    "url": "https://github.com/jacobbubu/crdt-pull.git"
   },
   "license": "MIT",
   "engines": {

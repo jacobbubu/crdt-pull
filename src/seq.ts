@@ -22,7 +22,11 @@ function toKey(key?: WhatToKey) {
 
   if (key instanceof Row) return key?.get()._sort as string
 
-  return key?._sort
+  if (key) {
+    return key._sort === null ? undefined : key._sort
+  } else {
+    return undefined
+  }
 }
 
 /*

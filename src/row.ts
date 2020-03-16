@@ -3,7 +3,7 @@ import { EventEmitter } from 'events'
 export type RowId = string
 
 export interface RowState {
-  _sort?: string
+  _sort?: string | null
   [key: string]: any
 }
 

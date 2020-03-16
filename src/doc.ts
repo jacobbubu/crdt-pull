@@ -120,7 +120,7 @@ export class Doc extends Scuttlebutt {
   }
 
   createSeq(key: string, val: string) {
-    return this._set(key, val, Seq)
+    return this._set(key, val, Seq) as Seq
   }
 
   applyUpdate(update: Update) {

@@ -1,5 +1,5 @@
 import { Update } from '@jacobbubu/scuttlebutt-pull'
-import { Doc, Set, Seq, Row, RowId, RowState } from '../src'
+import { Doc, Seq, Row, RowState } from '../src'
 
 /*
   each function should accept the row, or the id.
@@ -96,7 +96,7 @@ describe('set', () => {
 
     expect(() => {
       seq.insert({ id: 'd', type: 'thing', what: 6 }, A, C)
-    }).toThrow(/Impossible*/)
+    }).not.toThrow()
   })
 
   /*

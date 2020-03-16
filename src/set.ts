@@ -53,6 +53,10 @@ export class Set extends EventEmitter {
     this.setMaxListeners(Infinity)
   }
 
+  public get doc() {
+    return this._doc
+  }
+
   get key() {
     return this._key
   }

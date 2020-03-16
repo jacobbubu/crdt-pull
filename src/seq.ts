@@ -1,6 +1,6 @@
 import { Doc } from './doc'
 import { Row, RowId, RowState } from './row'
-import { Set, RowIdParam } from './set'
+import { Set, RowIdParam, SetFilter } from './set'
 import { between, randstr, strord, lo as lowChar, hi as highChar } from '@jacobbubu/between-ts'
 
 type RowPointer = RowId | Row | RowState
@@ -13,6 +13,14 @@ function sort(array: Row[]) {
 
 function id(obj: RowState) {
   return obj.id || obj._id || '_' + Date.now() + '_' + Math.round(Math.random() * 1000)
+}
+
+function find(ary: Row[], iter: (row: Row, index: string, ary: Row[]) => boolean) {
+  for (let index in ary) {
+    const row = ary[index]
+    if (iter(row, index, ary)) return row
+  }
+  return null
 }
 
 type WhatToKey = Row | RowState | string
@@ -53,23 +61,33 @@ function max(ary: Row[], test: TestFunc, wantIndex: boolean = false) {
 }
 
 export class Seq extends Set {
-  constructor(doc: Doc, key: string, value: any) {
+  constructor(doc: Doc, key: string | SetFilter, value: any) {
     super(doc, key, value)
-    this._key = key
-    this._doc = doc
-    this._value = value
-  }
 
-  public get key() {
-    return this._key
-  }
+    if (typeof key !== 'string') {
+      this._key = null
+    }
 
-  public get doc() {
-    return this._doc
-  }
+    const self = this
+    this.on('changes', function(row, changes) {
+      if (!changes._sort) {
+        return
+      }
 
-  public get value() {
-    return this._value
+      sort(self._array)
+
+      // check if there is already an item with this sort key.
+      const prev = find(self._array, function(other: Row) {
+        return other !== row && other.get('_sort') === row.get('_sort')
+      })
+
+      // nudge it forward if it has the same key.
+      if (prev) {
+        self.insert(row, prev, self.next(row))
+      } else {
+        self.emit('move', row)
+      }
+    })
   }
 
   insert(rowPointer: RowPointer, before?: RowIdParam, after?: RowIdParam) {

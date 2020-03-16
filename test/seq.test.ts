@@ -1,9 +1,10 @@
+import { Update } from '@jacobbubu/scuttlebutt-pull'
 import { Doc, Set, Seq, Row, RowId, RowState } from '../src'
 
 /*
   each function should accept the row, or the id.
 */
-function id(e: Row) {
+function id(e: Row | RowState) {
   return Math.random() < 0.5 ? e : e && e.id
 }
 
@@ -99,28 +100,75 @@ describe('set', () => {
   })
 
   /*
-  insert before.
+    insert before.
+  */
+  function sync(array: RowState[], seq: Seq) {
+    const r: Record<string, Function> = {}
+    'pop,push,shift,unshift'.split(',').forEach(function(method) {
+      r[method] = function(row: RowState) {
+        ;(seq as any)[method](/push|unshift/.test(method) ? row : id(row))
+        ;(array as any)[method](row)
+        if (row) {
+          expect(array.indexOf(row)).toBe(seq.indexOf(row.id))
+        }
+        expect(seq.toJSON()).toEqual(array)
+      }
+    })
+    return r
+  }
+  it('random', () => {
+    const doc = new Doc()
+    const seq = new Seq(doc, 'type', 'thing')
+    const ary: RowState[] = []
 
-*/
+    const s = sync(ary, seq)
 
-  // function sync(array: [], seq: Seq) {
-  //   const r: Record<string, Function> = {};
-  //   "pop,push,shift,unshift".split(",").forEach(function(method) {
-  //     r[method] = function(row: Row | undefined) {
-  //       (seq as any)[method](/push|unshift/.test(method) ? row : id(row));
-  //       array[method](row);
-  //       if (row) {
-  //         expect(array.indexOf(row)).toBe(seq.indexOf(row.id))
-  //       }
-  //       expect(seq.toJSON()).toBe(array)
-  //     };
-  //   });
-  //   return r;
-  // }
-  //   it('random', () => {
-  //     const doc = new Doc()
-  //     const seq = new Seq(doc, 'type', 'thing')
-  //     const ary = []
+    s.push({ id: 'a', hello: 3 })
+    s.push({ id: 'B', hello: 3 })
+    s.unshift({ id: 'c', hello: 'x' })
 
-  //   })
+    s.pop()
+    let l = 92
+    while (l--) {
+      const op = ['push', 'pop', 'shift', 'unshift'][~~(Math.random() * 4)]
+      const obj = { id: '_' + Math.random(), r: Math.random() }
+      try {
+        s[op](obj)
+      } catch (e) {
+        throw e
+      }
+    }
+  })
+
+  it('do not emit _remove until something is not in the history', () => {
+    const doc = new Doc()
+    const s = new Seq(doc, 'type', 'thing')
+    let removed: Update[] = []
+
+    doc.on('_remove', function(update: Update) {
+      removed.push(update)
+    })
+
+    s.push({ id: 'a', hello: 1 })
+    s.push({ id: 'b', hello: 2 })
+    s.push({ id: 'c', hello: 3 })
+
+    s.after('a', 'b')
+
+    let hist = doc.history({})
+
+    removed.forEach(function(e) {
+      expect(hist.indexOf(e)).toBe(-1)
+    })
+
+    removed = []
+    doc.set('a', { id: 'a', _sort: null, type: null, hello: null })
+
+    hist = doc.history({})
+    expect(removed.length).toBe(2)
+
+    removed.forEach(function(e) {
+      expect(hist.indexOf(e)).toBe(-1)
+    })
+  })
 })

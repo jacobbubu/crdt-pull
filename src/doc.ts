@@ -173,15 +173,18 @@ export class Doc extends Scuttlebutt {
       row.emit('removed')
       this.emit('remove', row)
     } else {
-      const maybe = []
+      // collect the updates in history that we may need to emit "_remove" event
+      const maybeRemove = []
       for (let key in changes) {
         if (changes.hasOwnProperty(key)) {
           const value = changes[key]
 
           if (!hist[key] || order(hist[key], update) < 0) {
-            if (hist[key] && maybe.indexOf(hist[key]) === -1) {
-              maybe.push(hist[key])
+            if (hist[key] && maybeRemove.indexOf(hist[key]) === -1) {
+              // the history has the update that will be replaced by new one
+              maybeRemove.push(hist[key])
             }
+            // Now we apply the current update to history
             hist[key] = update
             changed[key] = value
 
@@ -193,7 +196,10 @@ export class Doc extends Scuttlebutt {
       const h = this.history({})
 
       const self = this
-      maybe.forEach(function(e) {
+
+      maybeRemove.forEach(function(e) {
+        // When we find that the update exists in the previous history,
+        // but not in the current history, the "_remove" event is emitted.
         if (h.indexOf(e) === -1) {
           self.emit('_remove', e)
         }

@@ -64,10 +64,6 @@ export class Seq extends Set {
   constructor(doc: Doc, key: string | SetFilter, value: any) {
     super(doc, key, value)
 
-    if (typeof key !== 'string') {
-      this._key = null
-    }
-
     const self = this
     this.on('changes', function(row, changes) {
       if (!changes._sort) {

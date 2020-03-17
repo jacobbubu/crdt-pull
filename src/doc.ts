@@ -221,8 +221,6 @@ export class Doc extends Scuttlebutt {
       row.new = false
     }
 
-    this.emit('_update', update)
-
     row.emit('update', update, changed)
     row.emit('changes', changes, changed)
     row.emit('change', changed) // installing this in parallel, so tests still pass.
@@ -230,7 +228,7 @@ export class Doc extends Scuttlebutt {
     this.emit('raw_update', update)
     this.emit('update', row)
 
-    return false
+    return true
   }
 
   history(sources: Sources) {

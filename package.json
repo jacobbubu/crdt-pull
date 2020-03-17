@@ -115,6 +115,6 @@
   "dependencies": {
     "@jacobbubu/between-ts": "^1.0.0",
     "@jacobbubu/debug": "^1.1.5",
-    "@jacobbubu/scuttlebutt-pull": "^1.6.1"
+    "@jacobbubu/scuttlebutt-pull": "^1.6.2"
   }
 }

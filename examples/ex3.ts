@@ -21,7 +21,7 @@ const main = async () => {
 
   await delay(10)
 
-  console.log('todosOnHoc:', todosOnDoc.toJSON())
+  console.log('todosOnHoc:', todosOnHoc.toJSON())
   console.log('last on todosOnHoc:', todosOnHoc.last().state)
 }
 

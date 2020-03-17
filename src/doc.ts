@@ -153,7 +153,9 @@ export class Doc extends Scuttlebutt {
             if (hist[key]) {
               this.emit('_remove', hist[key])
             }
-            hist[key] = [null, update[1], update[2]]
+            const ts = update[UpdateItems.Timestamp]
+            const sourceId = update[UpdateItems.SourceId]
+            hist[key] = [null, ts, sourceId] as Update
             emit = true
           }
         }

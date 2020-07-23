@@ -4,8 +4,12 @@ import { Doc, Seq, Row, RowState } from '../src'
 /*
   each function should accept the row, or the id.
 */
-function id(e: Row | RowState) {
-  return Math.random() < 0.5 ? e : e && e.id
+function id(row: Row | RowState) {
+  if (row instanceof Row) {
+    return Math.random() < 0.5 ? row : row.id
+  } else {
+    return row.id
+  }
 }
 
 function validateNextPrev(seq: Seq) {
@@ -18,7 +22,7 @@ function validateNextPrev(seq: Seq) {
   })
 }
 
-describe('set', () => {
+describe('seq', () => {
   it('basic', () => {
     function go() {
       const doc = new Doc()
@@ -103,10 +107,10 @@ describe('set', () => {
     insert before.
   */
   function sync(array: RowState[], seq: Seq) {
-    const r: Record<string, Function> = {}
+    const retObj: Record<string, Function> = {}
     'pop,push,shift,unshift'.split(',').forEach(function(method) {
-      r[method] = function(row: RowState) {
-        ;(seq as any)[method](/push|unshift/.test(method) ? row : id(row))
+      retObj[method] = function(row: RowState) {
+        ;(seq as any)[method](/push|unshift/.test(method) ? row : undefined)
         ;(array as any)[method](row)
         if (row) {
           expect(array.indexOf(row)).toBe(seq.indexOf(row.id))
@@ -114,8 +118,9 @@ describe('set', () => {
         expect(seq.toJSON()).toEqual(array)
       }
     })
-    return r
+    return retObj
   }
+
   it('random', () => {
     const doc = new Doc()
     const seq = new Seq(doc, 'type', 'thing')

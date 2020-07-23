@@ -9,7 +9,7 @@ import {
   sort,
   UpdateItems
 } from '@jacobbubu/scuttlebutt-pull'
-import { Row, RowId, RowValue, RowState } from './row'
+import { Row, RowId, RowState, RowChanges } from './row'
 import { Set, SetFilter } from './set'
 import { Seq } from './seq'
 import { merge } from './utils'
@@ -20,12 +20,49 @@ export enum DocItems {
   Changes
 }
 
-type Sets = { [setId: string]: Set } & EventEmitter
+type Sets = { [setId: string]: Set }
+export type Rows = Record<RowId, Row>
+
+interface SetsEventEmitter extends EventEmitter {
+  addListener(event: string, listener: (row: Row, changed: RowChanges) => void): this
+  on(event: string, listener: (row: Row, changed: RowChanges) => void): this
+  once(event: string, listener: (row: Row, changed: RowChanges) => void): this
+  removeListener(event: string, listener: (row: Row, changed: RowChanges) => void): this
+  off(event: string, listener: (row: Row, changed: RowChanges) => void): this
+  emit(event: string, row: Row, changed: RowChanges): boolean
+}
+
+type CAUR = 'create' | 'add' | 'update' | 'remove'
+
+export interface Doc {
+  addListener(event: CAUR, listener: (row: Row) => void): this
+  on(event: CAUR, listener: (row: Row) => void): this
+  once(event: CAUR, listener: (row: Row) => void): this
+  removeListener(event: CAUR, listener: (row: Row) => void): this
+  off(event: CAUR, listener: (row: Row) => void): this
+  emit(event: CAUR, row: Row): boolean
+
+  addListener(event: 'invalid', listener: (err: Error) => void): this
+  on(event: 'invalid', listener: (err: Error) => void): this
+  once(event: 'invalid', listener: (err: Error) => void): this
+  removeListener(event: 'invalid', listener: (err: Error) => void): this
+  off(event: 'invalid', listener: (err: Error) => void): this
+  emit(event: 'invalid', err: Error): this
+
+  addListener(event: 'raw_update' | '_remove', listener: (update: Update) => void): this
+  on(event: 'raw_update' | '_remove', listener: (update: Update) => void): this
+  once(event: 'raw_update' | '_remove', listener: (update: Update) => void): this
+  removeListener(event: 'raw_update' | '_remove', listener: (update: Update) => void): this
+  off(event: 'raw_update' | '_remove', listener: (update: Update) => void): this
+  emit(event: 'raw_update' | '_remove', update: Update): this
+}
 
 export class Doc extends Scuttlebutt {
-  private _rows: Record<RowId, Row> = {}
-  private _sets: Sets = new EventEmitter() as Sets
+  private _rows: Rows = {}
+  private _sets: Sets = {}
   private _hist: Record<RowId, Record<string, Update>> = {}
+
+  public readonly setsEvent: SetsEventEmitter = new EventEmitter()
 
   constructor(opts?: ScuttlebuttOptions) {
     super(opts)
@@ -40,7 +77,7 @@ export class Doc extends Scuttlebutt {
     return this._sets
   }
 
-  add(initial: RowState) {
+  add(initial: RowChanges) {
     const id = initial.id === undefined ? createId() : initial.id
     const r = this._add(id)
     r._set(initial)
@@ -64,13 +101,13 @@ export class Doc extends Scuttlebutt {
     this._rows[r.id] = r
 
     // any further changes occurred on this row will trigger this event
-    function track(changes: RowValue) {
+    function track(changes: RowChanges | null) {
       doc.localUpdate([r.id, changes])
     }
 
     r.on('preupdate', track)
 
-    r.on('remove', function() {
+    r.on('removed', function() {
       r.removeAllListeners('preupdate')
     })
 
@@ -78,7 +115,7 @@ export class Doc extends Scuttlebutt {
     return r
   }
 
-  set(id: RowId, change: RowState | null) {
+  set(id: RowId, change: RowChanges | null) {
     const r = this._add(id)
     return r.set(change)
   }
@@ -139,7 +176,7 @@ export class Doc extends Scuttlebutt {
 
     const [id, changes]: [RowId, RowState | null] = update[UpdateItems.Data]
 
-    const changed: Record<string, any> = {}
+    const changed: RowChanges = {}
     const row = this._add(id)
 
     const hist = (this._hist[id] = this._hist[id] || {})
@@ -209,8 +246,9 @@ export class Doc extends Scuttlebutt {
     }
 
     merge(row.state, changed)
+    // TRY TO REMOVE
     for (let k in changed) {
-      this._sets.emit(k, row, changed)
+      this.setsEvent.emit(k, row, changed)
     }
 
     if (!emit) {

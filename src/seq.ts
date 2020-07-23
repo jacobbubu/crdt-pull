@@ -1,6 +1,6 @@
 import { Doc } from './doc'
-import { Row, RowId, RowState } from './row'
-import { Set, RowIdParam, SetFilter } from './set'
+import { Row, RowId, RowState, RowChanges } from './row'
+import { Set, PossibleId, SetFilter } from './set'
 import { between, randstr, strord, lo as lowChar, hi as highChar } from '@jacobbubu/between-ts'
 
 type RowPointer = RowId | Row | RowState
@@ -23,13 +23,12 @@ function find(ary: Row[], iter: (row: Row, index: string, ary: Row[]) => boolean
   return null
 }
 
-type WhatToKey = Row | RowState | string
-
-function toKey(key?: WhatToKey) {
+function toKey(key?: RowPointer) {
   if ('string' === typeof key) return key
 
-  if (key instanceof Row) return key?.get()._sort as string
+  if (key instanceof Row) return key?.get('_sort') as string
 
+  // key is RowState
   if (key) {
     return key._sort === null ? undefined : key._sort
   } else {
@@ -45,7 +44,7 @@ function toKey(key?: WhatToKey) {
   etc is more natural
 */
 
-type TestFunc = (M?: WhatToKey, m?: WhatToKey) => boolean
+type TestFunc = (M?: RowPointer, m?: RowPointer) => boolean
 
 function max(ary: Row[], test: TestFunc, wantIndex: boolean = false) {
   let max = undefined
@@ -86,9 +85,9 @@ export class Seq extends Set {
     })
   }
 
-  insert(rowPointer: RowPointer, before?: RowIdParam, after?: RowIdParam) {
-    const beforeId = toKey((before && this.getRow(before)) || lowChar)
-    const afterId = toKey((after && this.getRow(after)) || highChar)
+  insert(rowPointer: RowPointer, before?: PossibleId, after?: PossibleId) {
+    const beforeId = toKey((before && (this.getRow(before) as RowPointer)) || lowChar)
+    const afterId = toKey((after && (this.getRow(after) as RowPointer)) || highChar)
 
     // must get id from the doc,
     // because may be moving this item into this set.
@@ -103,7 +102,7 @@ export class Seq extends Set {
     let row: Row
     if (rowPointer instanceof Row) {
       row = rowPointer
-      const changes: RowState = { _sort }
+      const changes: RowChanges = { _sort }
       if (this.key && row.get(this.key) !== this.value) {
         changes[this.key] = this.value
       }
@@ -122,8 +121,8 @@ export class Seq extends Set {
     return row
   }
 
-  prev(key?: RowIdParam) {
-    const sortKey = toKey(this.getRow(key) || highChar)
+  prev(key?: PossibleId) {
+    const sortKey = toKey((this.getRow(key) as RowPointer) || highChar)
     // find the greatest item that is less than `key`.
     // since the list is kept in order,
     // a binary search is used.
@@ -137,8 +136,8 @@ export class Seq extends Set {
     })
   }
 
-  next(key?: RowIdParam) {
-    const sortKey = toKey(this.getRow(key) || lowChar)
+  next(key?: PossibleId) {
+    const sortKey = toKey((this.getRow(key) as RowPointer) || lowChar)
 
     return max(this._array, function(M, m) {
       if (toKey(m)! > sortKey!) {
@@ -153,11 +152,11 @@ export class Seq extends Set {
     return sort(this._array)
   }
 
-  before(rowPointer: RowPointer, before: RowIdParam) {
+  before(rowPointer: RowPointer, before: PossibleId) {
     return this.insert(rowPointer, this.prev(before), before)
   }
 
-  after(rowPointer: RowPointer, after: RowIdParam) {
+  after(rowPointer: RowPointer, after: PossibleId) {
     return this.insert(rowPointer, after, this.next(after))
   }
 

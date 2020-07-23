@@ -5,7 +5,7 @@ describe('set', () => {
   const set = doc.createSet('type', 'thing')
   const set2 = doc.createSet('type', 'other')
 
-  function subscribe(set: Set, eventName: string, fn: Function) {
+  function subscribe(set: Set, eventName: 'add' | 'remove' | 'move', fn: Function) {
     set.on(eventName, fn as any)
     return function unsubscribe() {
       set.removeListener(eventName, fn as any)
@@ -95,7 +95,7 @@ describe('set', () => {
     doc.add({ id: 'c', type: 'thing', what: 9 })
 
     const set = doc.createSet('type', 'thing')
-    const states: RowState = []
+    const states: RowState[] = []
 
     set.onEach(function(row, state) {
       states.push(row.state)

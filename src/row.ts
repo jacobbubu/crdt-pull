@@ -1,30 +1,77 @@
 import { EventEmitter } from 'events'
+import { Update } from '@jacobbubu/scuttlebutt-pull'
 
 export type RowId = string
 
 export interface RowState {
+  id: RowId
+  // Seq uses _sort to maintain the relative order between rows
   _sort?: string | null
+
   [key: string]: any
 }
 
-export interface RowValue extends RowState {
-  id: RowId
+export type RowChanges = Partial<RowState>
+
+export interface Row {
+  addListener(event: 'preupdate', listener: (changes: RowChanges | null) => void): this
+  on(event: 'preupdate', listener: (changes: RowChanges | null) => void): this
+  once(event: 'preupdate', listener: (changes: RowChanges | null) => void): this
+  removeListener(event: 'preupdate', listener: (changes: RowChanges | null) => void): this
+  off(event: 'preupdate', listener: (changes: RowChanges | null) => void): this
+  emit(event: 'preupdate', changes: RowChanges | null): boolean
+
+  addListener(event: 'removed', listener: () => void): this
+  on(event: 'removed', listener: () => void): this
+  once(event: 'removed', listener: () => void): this
+  removeListener(event: 'removed', listener: () => void): this
+  off(event: 'removed', listener: () => void): this
+  emit(event: 'removed'): boolean
+
+  addListener(event: 'update', listener: (update: Update, changed: RowChanges) => void): this
+  on(event: 'update', listener: (update: Update, changed: RowChanges) => void): this
+  once(event: 'update', listener: (update: Update, changed: RowChanges) => void): this
+  removeListener(event: 'update', listener: (update: Update, changed: RowChanges) => void): this
+  off(event: 'update', listener: (update: Update, changed: RowChanges) => void): this
+  emit(event: 'update', update: Update, changed: RowChanges): boolean
+
+  addListener(
+    event: 'changes',
+    listener: (changes: RowChanges | null, changed: RowChanges) => void
+  ): this
+  on(event: 'changes', listener: (changes: RowChanges | null, changed: RowChanges) => void): this
+  once(event: 'changes', listener: (changes: RowChanges | null, changed: RowChanges) => void): this
+  removeListener(
+    event: 'changes',
+    listener: (changes: RowChanges | null, changed: RowChanges) => void
+  ): this
+  off(event: 'changes', listener: (changes: RowChanges | null, changed: RowChanges) => void): this
+  emit(event: 'changes', changes: RowChanges | null, changed: RowChanges): boolean
+
+  addListener(event: 'change', listener: (changed: RowChanges) => void): this
+  on(event: 'change', listener: (changed: RowChanges) => void): this
+  once(event: 'change', listener: (changed: RowChanges) => void): this
+  removeListener(event: 'change', listener: (changed: RowChanges) => void): this
+  off(event: 'change', listener: (changed: RowChanges) => void): this
+  emit(event: 'change', changed: RowChanges): boolean
 }
 
 export class Row extends EventEmitter {
   public new: boolean = false
-  public state: RowValue
+  public state: RowState
 
-  constructor(public id: RowId) {
+  constructor(id: RowId) {
     super()
     this.state = { id }
     this.setMaxListeners(Infinity)
   }
 
-  // 这里干了半天，最终会触发 doc 的 localUpdate，触发 applyUpdate，然后把 changes merge 回到 row.state
-  // 这个 set 方法是用来本地改变 row 的值的
-  set(changes: string | RowState | null, v?: any): Row {
-    let newChanges: RowState | null
+  get id() {
+    return this.state.id
+  }
+
+  set(changes: string | RowChanges | null, v?: any): Row {
+    let newChanges: RowChanges | null
     if (typeof changes === 'string') {
       const key = changes
       newChanges = {}
@@ -42,7 +89,7 @@ export class Row extends EventEmitter {
     return this
   }
 
-  _set(changes: RowState | null): Row {
+  _set(changes: RowChanges | null): Row {
     // the change is applied by the Doc!
     this.emit('preupdate', changes)
     return this
